@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_IMAGE = '${ARTIFACT_ID}'
+        DOCKER_REGISTRY = '${DOCKER_REGISTRY}'
+    }
+
+    stages {
+        stage('Checkout Source') {
+            steps {
+                checkout scm
+            }
+        }
+
+//         stage('Run Tests') {
+//             steps {
+//                 script {
+//                     // Run Maven tests
+//                     sh 'mvn clean install'
+//                 }
+//             }
+//         }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build the Docker image using Maven
+                    sh 'mvn clean install -Pdocker'
+                }
+            }
+        }
+
+        stage('Push Docker Image to JFrog Artifactory') {
+            steps {
+                script {
+                    // Login to JFrog Artifactory (use secret credentials in Jenkins)
+                    sh '''
+                        echo $ARTIFACTORY_PASSWORD | docker login $DOCKER_REGISTRY -u $ARTIFACTORY_USERNAME --password-stdin
+                    '''
+
+                    // Push Docker image
+                    sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:latest"
+                }
+            }
+        }
+    }
+}
